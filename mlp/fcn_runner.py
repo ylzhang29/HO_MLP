@@ -223,6 +223,7 @@ class FCNRunner:
         avg_validation_acc = []
         v_count = 0
         # validation_window = params['validation_window']
+        j = 0
         for i in range(1, self.num_epochs + 1):
 
             train_df = sklearn.utils.shuffle(train_df)
@@ -232,9 +233,9 @@ class FCNRunner:
                 batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
                 input_batch = train_df.iloc[batch_slice, 1:-1]
                 label_batch = train_df.iloc[batch_slice, -1]
-
-                self.train_once_dataframe(i, input_batch, label_batch)
-                self.last_train_iteration = i
+                self.train_once_dataframe(j, input_batch, label_batch)
+                self.last_train_iteration = j
+                j += 1
 
             if i % self.validation_interval == 0:
 
