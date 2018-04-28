@@ -94,7 +94,8 @@ class FCN:
             b = tf.cast(gt_labels,tf.float32)
             #print(tf.argmax(last_out, 1).dtype.name)
             #print(gt_labels.dtype.name)
-            auc = tf.metrics.auc(a,b)
+            # TODO: double check
+            auc = tf.metrics.auc(b, a)
             #auc = tf.contrib.metrics.streaming_auc(a, b)
             # utils.variable_summaries(accuracy, "accuracy", corpus_tag)
             self.variable_summaries(accuracy, "accuracy", task_tag)

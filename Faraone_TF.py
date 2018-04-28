@@ -14,19 +14,11 @@ def run_MLP(params, trows, vrows):
         utils.mkdir_recursive(config.get_rel_path("PATHS", "checkpoint_dir"))
 
     iris_runner = mlp.FCNRunner(config, params)  # trows, vrows, test_rows, config)
-    # if "TRAINING" in config:
-    #     # TODO: fix this dude, move the stuff one level higher
-    #     with tf.name_scope("train_data"):
-    #         #train_batch_size = config.getint("TRAINING", "batch_size")
-    #         train_batch_size = params['batch_size']
-    #         stratified_task = config.get("TRAINING", "stratified_sampling", fallback="")
-    #         trows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "training_file"))
-    #
-    #     with tf.name_scope("validation_data"):
-    #         vrows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "validation_file"))
 
     iris_runner.bind_training_dataqueue_dataframe(trows,params)
     iris_runner.bind_validation_dataqueue_dataframe(vrows)
+
+    # TODO: fix the bind_test_dataqueue
     '''
     if "TEST" in config:
         test_path = config.get_rel_path("TEST","test_file")

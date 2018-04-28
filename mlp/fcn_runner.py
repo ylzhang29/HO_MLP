@@ -154,6 +154,7 @@ class FCNRunner:
         print("Training at the end of iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
             i, training_accuracy, train_streaming_accuracy, train_loss))
         # self.train_summary_writer.flush()
+        return train_loss
 
     def load_checkpoint(self, path):
         self.saver.restore(self.session, path)
@@ -233,14 +234,15 @@ class FCNRunner:
                 batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
                 input_batch = train_df.iloc[batch_slice, 1:-1]
                 label_batch = train_df.iloc[batch_slice, -1]
-                self.train_once_dataframe(j, input_batch, label_batch)
+                train_loss = self.train_once_dataframe(j, input_batch, label_batch)
                 self.last_train_iteration = j
                 j += 1
 
             if i % self.validation_interval == 0:
 
-                # TODO understand the validation part
-
+                # TODO understand the validation part (important)
+                # TODO You should do it all in once go
+                # TODO check to see if this is OK
                 for valid_batch in range(number_of_validate_batches):
                     begin_batch = valid_batch * self.batch_size
                     batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
@@ -256,6 +258,7 @@ class FCNRunner:
                     else:
                         Validation_Acc = np.mean(val_acc)
                         avg_validation_acc.append(Validation_Acc)
+
         '''
         if i % self.val_check_after == 0:
             if np.mean(avg_validation_acc[:len(avg_validation_acc) // 2]) < np.mean(avg_validation_acc[len(avg_validation_acc) // 2:]):

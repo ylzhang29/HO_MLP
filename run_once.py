@@ -37,7 +37,7 @@ def optimize():
     space = {
         'l1_reg': 0.1335267529016616,
         'l2_reg': 0.11497692967392144,
-        'learning_rate': 0.000005280539672336577,
+        'learning_rate': 0.0005280539672336577,
         'num_layers': 1,
         'layer_size': 10,
         'batch_size': 512,
