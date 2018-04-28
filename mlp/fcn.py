@@ -11,6 +11,7 @@ class FCN:
 
     def __init__(self, config, params):
         self.input_features_slicer = config.get_as_slice("FEATURES", "columns")
+        self.column_size = None
 
         #self.l1_reg = [config.getfloat("TRAINING", "l1_regularization", fallback=0.0)]
         #self.l2_reg = [config.getfloat("TRAINING", "l2_regularization", fallback=0.0)]
@@ -135,10 +136,9 @@ class FCN:
             self.variable_summaries(accuracy, "accuracy", task_tag)
             self.accuracy = accuracy
 
-    def add_all_outputs_and_losses(self, input_features, input_data_cols, corpus_tag):
+    def add_all_outputs_and_losses(self, input_features, ground_truth, corpus_tag):
         hidden_output = self.make_hidden_FN_layers(input_features)
         for task_name, task_config in self.config_task_sections.items():
-            ground_truth = input_data_cols[int(task_config["ground_truth_column"])]
             if task_config["type"] == "linear":
                 task_name += "_lin"
                 self.add_linear_output_layer(hidden_output, ground_truth, corpus_tag, task_name)
@@ -153,6 +153,40 @@ class FCN:
         losses = tf.reduce_sum(tf.get_collection(tf.GraphKeys.LOSSES)) \
                  + tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
         return losses
+
+
+    def make_placeholders(self, column_size):
+        input_features = tf.placeholder(dtype=tf.float32, shape=(None, column_size))
+        input_labels = tf.placeholder(dtype=tf.int64, shape=(None, ))
+        return input_features, input_labels
+
+
+    def bind_graph_dataframe(self, corpus_tag, input_data_cols, batch_size, reuse=False, with_training_op=False):
+
+        # TODO: ugly, needs to be initialized once
+        # TODO: Do we need variable scope for placeholders as well?
+        if self.column_size is None:
+            self.column_size = input_data_cols.iloc[:, self.input_features_slicer].shape[1]
+            self.input_features_placeholder, self.input_label_placeholder = self.make_placeholders(self.column_size)
+
+        with tf.variable_scope("network", reuse=reuse):
+            # self.Y_logits = self.make_FN_layers()
+            loss_sum = self.add_all_outputs_and_losses(self.input_features_placeholder,
+                                                       self.input_label_placeholder,
+                                                       corpus_tag)
+
+            updates_op = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            self.loss = control_flow_ops.with_dependencies(updates_op, loss_sum)  # all losses
+            if with_training_op:
+                self.train_op = self.add_optimizer(type=self.optimizer)
+
+            all_weight_vars = [tf.reshape(var, [-1]) for var in tf.get_collection(tf.GraphKeys.MODEL_VARIABLES) if
+                               "/weights" in var.name]
+            tf.summary.histogram("weight_hist", tf.concat(axis=0, values=all_weight_vars),
+                                 collections=["%s_summaries" % corpus_tag])
+
+
+            # self.summaries_merged = self.get_summaries(corpus_tag)
 
     def bind_graph(self, corpus_tag, input_data_cols, batch_size, reuse=False, with_training_op=False):
         # Builds all ops that correspond to the NN graph and its evaluators and optimizers.

@@ -4,6 +4,11 @@
 import csv
 import tensorflow as tf
 from tensorflow.contrib.training import stratified_sample
+import pandas as pd
+
+
+def read_csv_dataframe(filename):
+    return pd.read_csv(filename)
 
 
 def read_csv(filename, batch_size, stratify_task="", config=None):

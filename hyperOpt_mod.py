@@ -1,11 +1,16 @@
+import config_reader
+import utils
 from Faraone_TF import run_MLP
 import hyperopt
 import tensorflow as tf
 import re
 import pickle
+import csv_reader
 
 
 def objective(args):
+
+    config = config_reader.read_config(utils.abs_path_of("config/default.ini"))
     params = {}
 
     params['l1_reg'] = args['l1_reg']
@@ -17,8 +22,11 @@ def objective(args):
     params['dropout_keep_probability'] = args['dropout_keep_probability']
     params['validation_window'] = args['validation_window']
 
+    trows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "training_file"))
+    vrows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "validation_file"))
+
     with tf.Graph().as_default():
-        loss = run_MLP(params)
+        loss = run_MLP(params, trows, vrows)
 
     return loss
 
