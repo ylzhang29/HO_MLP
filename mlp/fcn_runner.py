@@ -82,6 +82,7 @@ class FCNRunner:
 
         self.valid_summaries_merged = self.network.get_summaries()
 
+    # TODO fix this
     def bind_test_dataqueue(self, test_data_cols):
         config = self.config
 
