@@ -26,9 +26,6 @@ def objective(args):
     with tf.Graph().as_default():
         loss = run_MLP(params, trows, vrows)
 
-    with tf.Graph().as_default():
-        loss = run_MLP(params, trows, vrows)
-
     return loss
 
 

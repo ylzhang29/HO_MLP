@@ -10,7 +10,6 @@ import csv_reader
 
 def objective(args):
 
-    config = config_reader.read_config(utils.abs_path_of("config/default.ini"))
     params = {}
 
     params['l1_reg'] = args['l1_reg']
@@ -21,9 +20,6 @@ def objective(args):
     params['batch_size'] = args['batch_size']
     params['dropout_keep_probability'] = args['dropout_keep_probability']
     params['validation_window'] = args['validation_window']
-
-    trows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "training_file"))
-    vrows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "validation_file"))
 
     with tf.Graph().as_default():
         loss = run_MLP(params, trows, vrows)
@@ -58,6 +54,7 @@ def optimize():
         'batch_size': hyperopt.hp.choice('batch_size', [512]),
         'dropout_keep_probability': hyperopt.hp.choice('dropout_keep_probability', [0.8846418566190806]),
         'validation_window': hyperopt.hp.choice('validation_window', [10])
+    #     TODO probably you can pass in the dataframes like this, check in hyperopt documentation
     }
 
     try:
@@ -89,5 +86,18 @@ def optimize():
     f.close()
 
 
-while True:
-    optimize()
+def main():
+    global trows, vrows
+
+    config = config_reader.read_config(utils.abs_path_of("config/default.ini"))
+
+    trows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "training_file"))
+    vrows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "validation_file"))
+
+    while True:
+        optimize()
+
+if __name__ == '__main__':
+    vrows = trows = ""
+    main()
+
