@@ -183,7 +183,7 @@ class FCNRunner:
             i, validation_accuracy, validation_streaming_accuracy, validation_loss, val_auc))
         print("*" * 80 + "\n\n")
         # self.valid_summary_writer.flush()
-        return val_auc
+        return val_auc, validation_loss
 
     def test_once(self):
         test_summary, test_loss, test_predictions, test_accuracy = self.session.run(
@@ -223,6 +223,8 @@ class FCNRunner:
         print("\n")
         val_acc = []
         avg_validation_acc = []
+        val_loss = []
+        avg_validation_loss = []
         v_count = 0
         # validation_window = params['validation_window']
         j = 0
@@ -247,27 +249,39 @@ class FCNRunner:
                 input_batch = validate_df.iloc[:, 1:-1]
                 label_batch = validate_df.iloc[:, -1]
 
-                accuracy = self.validate_once(i, input_batch, label_batch)
+                accuracy, loss = self.validate_once(i, input_batch, label_batch)
                 val_acc.append(accuracy)
+                val_loss.append(loss)
                 v_count += 1
                 if v_count > self.validation_window:
                     Validation_Acc = np.mean(val_acc[-self.validation_window:])
                     avg_validation_acc.append(Validation_Acc)
+                    avg_validation_loss.append(np.mean(val_loss[-self.validation_window:]))
                 else:
                     Validation_Acc = np.mean(val_acc)
                     avg_validation_acc.append(Validation_Acc)
+                    avg_validation_loss.append(np.mean(val_loss))
 
-        '''
-        if i % self.val_check_after == 0:
-            if np.mean(avg_validation_acc[:len(avg_validation_acc) // 2]) < np.mean(avg_validation_acc[len(avg_validation_acc) // 2:]):
-                print(np.mean(avg_validation_acc[:len(avg_validation_acc) // 2]))
-                print(np.mean(avg_validation_acc[len(avg_validation_acc) // 2:]))
-                print(self.num_epochs)
-                print("_"*50)
-                break
-            else:
-                avg_validation_acc = []
-        '''
+            if j % self.val_check_after == 0:
+                if np.mean(avg_validation_loss[:len(avg_validation_loss) // 2]) < np.mean(avg_validation_loss[len(avg_validation_loss) // 2:]):
+                    print(np.mean(avg_validation_loss[:len(avg_validation_loss) // 2]))
+                    print(np.mean(avg_validation_loss[len(avg_validation_loss) // 2:]))
+                    print(self.num_epochs)
+                    print("_"*50)
+                    break
+                else:
+                    avg_validation_acc = []
+                    avg_validation_loss = []
+
+            # if j % self.val_check_after == 0:
+            #     if np.mean(avg_validation_acc[:len(avg_validation_acc) // 2]) < np.mean(avg_validation_acc[len(avg_validation_acc) // 2:]):
+            #         print(np.mean(avg_validation_acc[:len(avg_validation_acc) // 2]))
+            #         print(np.mean(avg_validation_acc[len(avg_validation_acc) // 2:]))
+            #         print(self.num_epochs)
+            #         print("_"*50)
+            #         break
+            #     else:
+            #         avg_validation_acc = []
         return Validation_Acc
 
     def run_test(self):
