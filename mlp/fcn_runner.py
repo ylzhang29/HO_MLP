@@ -232,6 +232,7 @@ class FCNRunner:
             for batch in range(number_of_train_batches):
                 begin_batch = batch * self.batch_size
                 batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
+                # TODO fix the slicing
                 input_batch = train_df.iloc[batch_slice, 1:-1]
                 label_batch = train_df.iloc[batch_slice, -1]
                 train_loss = self.train_once_dataframe(j, input_batch, label_batch)
@@ -241,23 +242,19 @@ class FCNRunner:
             if i % self.validation_interval == 0:
 
                 # TODO understand the validation part (important)
-                # TODO You should do it all in once go
-                # TODO check to see if this is OK
-                for valid_batch in range(number_of_validate_batches):
-                    begin_batch = valid_batch * self.batch_size
-                    batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
-                    input_batch = validate_df.iloc[batch_slice, 1:-1]
-                    label_batch = validate_df.iloc[batch_slice, -1]
+                # TODO fix the slicing
+                input_batch = validate_df.iloc[:, 1:-1]
+                label_batch = validate_df.iloc[:, -1]
 
-                    accuracy = self.validate_once(i, input_batch, label_batch)
-                    val_acc.append(accuracy)
-                    v_count += 1
-                    if v_count > self.validation_window:
-                        Validation_Acc = np.mean(val_acc[-self.validation_window:])
-                        avg_validation_acc.append(Validation_Acc)
-                    else:
-                        Validation_Acc = np.mean(val_acc)
-                        avg_validation_acc.append(Validation_Acc)
+                accuracy = self.validate_once(i, input_batch, label_batch)
+                val_acc.append(accuracy)
+                v_count += 1
+                if v_count > self.validation_window:
+                    Validation_Acc = np.mean(val_acc[-self.validation_window:])
+                    avg_validation_acc.append(Validation_Acc)
+                else:
+                    Validation_Acc = np.mean(val_acc)
+                    avg_validation_acc.append(Validation_Acc)
 
         '''
         if i % self.val_check_after == 0:
