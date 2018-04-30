@@ -114,7 +114,7 @@ class FCNRunner:
 
         self.session.run(tf.local_variables_initializer())  # for streaming metrics
 
-        # self.create_summary_writers()
+        self.create_summary_writers()
 
         # coord = tf.train.Coordinator()
         # tf.train.start_queue_runners(sess=self.session, coord=coord)
@@ -149,12 +149,12 @@ class FCNRunner:
                        self.network.input_features_placeholder: input_batch,
                        self.network.input_label_placeholder: label_batch})
 
-        # self.train_summary_writer.add_summary(training_summary, i)
+        self.train_summary_writer.add_summary(training_summary, i)
 
         # TODO: fix the printing
         print("Training at the end of iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
             i, training_accuracy, train_streaming_accuracy, train_loss))
-        # self.train_summary_writer.flush()
+        self.train_summary_writer.flush()
         return train_loss
 
     def load_checkpoint(self, path):
@@ -176,13 +176,13 @@ class FCNRunner:
 
         val_auc = val_auc[0][1]
 
-        # self.valid_summary_writer.add_summary(validation_summary, i)
+        self.valid_summary_writer.add_summary(validation_summary, i)
 
         print("\n\n" + "*" * 80)
         print("Validation after iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f\tAUC:\t%f" % (
             i, validation_accuracy, validation_streaming_accuracy, validation_loss, val_auc))
         print("*" * 80 + "\n\n")
-        # self.valid_summary_writer.flush()
+        self.valid_summary_writer.flush()
         return val_auc, validation_loss
 
     def test_once(self):
@@ -190,7 +190,7 @@ class FCNRunner:
             [self.test_summaries_merged, self.test_loss, self.test_predictions, self.test_accuracy],
             feed_dict={self.network.keep_prob: 1, self.network.is_training: False})
 
-        # self.test_summary_writer.add_summary(test_summary, 1)
+        self.test_summary_writer.add_summary(test_summary, 1)
 
         print("\n\n" + "*" * 80)
         print("Test accuracy at the end:\t%f\tloss:\t%f" % (
@@ -230,6 +230,7 @@ class FCNRunner:
         j = 0
         for i in range(1, self.num_epochs + 1):
 
+            # TODO remove sklearn
             train_df = sklearn.utils.shuffle(train_df)
 
             for batch in range(number_of_train_batches):
