@@ -260,18 +260,18 @@ class FCNRunner:
                     avg_validation_acc.append(Validation_Acc)
                     avg_validation_loss.append(np.mean(val_loss))
 
-            if j > 0 and j % self.val_check_after == 0:
-                if np.mean(avg_validation_loss[:len(avg_validation_loss) // 2]) < np.mean(avg_validation_loss[len(avg_validation_loss) // 2:]) + 1e-2:
-                    print(np.mean(avg_validation_loss[:len(avg_validation_loss) // 2]))
-                    print(np.mean(avg_validation_loss[len(avg_validation_loss) // 2:]))
+            if i > 0 and (i % self.val_check_after == 0):
+                older_half_loss_mean = np.mean(avg_validation_loss[:len(avg_validation_loss) // 2])
+                newer_half_loss_mean = np.mean(avg_validation_loss[len(avg_validation_loss) // 2:])
+                if older_half_loss_mean < newer_half_loss_mean + 1e-2:
+                    print(older_half_loss_mean)
+                    print(newer_half_loss_mean)
                     print(j)
                     print("_"*50)
                     break
                 else:
                     avg_validation_acc = []
                     avg_validation_loss = []
-                    print(np.mean(avg_validation_loss[:len(avg_validation_loss) // 2]))
-                    print(np.mean(avg_validation_loss[len(avg_validation_loss) // 2:]))
 
             # if j % self.val_check_after == 0:
             #     if np.mean(avg_validation_acc[:len(avg_validation_acc) // 2]) < np.mean(avg_validation_acc[len(avg_validation_acc) // 2:]):
