@@ -11,6 +11,7 @@ class FCN:
 
     def __init__(self, config, params):
         self.input_features_slicer = config.get_as_slice("FEATURES", "columns")
+        self.ground_truth_slicer = config.get_as_slice("TASK0", "ground_truth_column")
         self.column_size = None
 
         #self.l1_reg = [config.getfloat("TRAINING", "l1_regularization", fallback=0.0)]
@@ -56,8 +57,9 @@ class FCN:
                                                    weights_regularizer=self.l1_l2_regularizer,
                                                    scope=layer_scope)
 
-                    # if i == self.num_layers:
-                    if i % 2 == 0:
+                    # TODO no dropout in between (discuss with Yanli)
+                    # if i % 2 == 0:
+                    if i == self.num_layers:
                         previous_out = tf.nn.dropout(previous_out, self.keep_prob)
 
         last_hidden_layer = previous_out
@@ -164,8 +166,6 @@ class FCN:
 
     def bind_graph_dataframe(self, corpus_tag, input_data_cols, batch_size, reuse=False, with_training_op=False):
 
-        # TODO: ugly, needs to be initialized once
-        # TODO: Do we need variable scope for placeholders as well?
         if self.column_size is None:
             self.column_size = input_data_cols.iloc[:, self.input_features_slicer].shape[1]
             self.input_features_placeholder, self.input_label_placeholder = self.make_placeholders(self.column_size)

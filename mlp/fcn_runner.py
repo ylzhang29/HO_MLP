@@ -3,7 +3,6 @@ import threading
 
 import numpy as np
 import tensorflow as tf
-import sklearn
 
 import utils
 from mlp.fcn import FCN
@@ -72,7 +71,6 @@ class FCNRunner:
 
         # now reuse the graph to bind new OPs that handle the validation data:
         valid_batch_size = config.getint("TRAINING", "validation_batch_size")
-        # TODO this reuse story should be also figured out
         with tf.name_scope("Valid"):
             self.network.bind_graph_dataframe("VALID", valid_data_cols, valid_batch_size, reuse=True, with_training_op=False)
         self.valid_loss = self.network.loss
@@ -82,14 +80,13 @@ class FCNRunner:
 
         self.valid_summaries_merged = self.network.get_summaries()
 
-    # TODO fix this
-    def bind_test_dataqueue(self, test_data_cols):
+    def bind_test_dataqueue_dataframe(self, test_data_cols):
         config = self.config
 
         # now resuse the graph to bind new OPS that handle the test data:
         test_batch_size = config.getint("TEST", "batch_size")
         with tf.name_scope("Test"):
-            self.network.bind_graph("TEST", test_data_cols, test_batch_size, reuse=True, with_training_op=False)
+            self.network.bind_graph_dataframe("TEST", test_data_cols, test_batch_size, reuse=True, with_training_op=False)
         self.test_loss = self.network.loss
         self.test_str_accu = self.network.streaming_accu_op
         self.test_accuracy = self.network.accuracy
@@ -114,14 +111,15 @@ class FCNRunner:
 
         self.session.run(tf.local_variables_initializer())  # for streaming metrics
 
-        self.create_summary_writers()
+        # self.create_summary_writers()
 
+        # TODO: No need for queue_runners anymore
         # coord = tf.train.Coordinator()
         # tf.train.start_queue_runners(sess=self.session, coord=coord)
         # start_queue_runners has to be called for any Tensorflow graph that uses queues.
 
-        tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
-        tensorboard_thread.start()
+        # tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
+        # tensorboard_thread.start()
 
     def create_summary_writers(self):
 
@@ -141,7 +139,7 @@ class FCNRunner:
     def test(self, test_features, test_labels):
         pass
 
-    def train_once_dataframe(self, i, input_batch, label_batch):
+    def train_once_dataframe(self, epoch, i, input_batch, label_batch):
         _, train_loss, training_summary, training_accuracy, train_streaming_accuracy = self.session.run(
             [self.train_op, self.train_loss, self.train_summaries_merged, self.train_accuracy, self.train_str_accu],
             feed_dict={self.network.keep_prob: self.keep_prob,
@@ -149,12 +147,11 @@ class FCNRunner:
                        self.network.input_features_placeholder: input_batch,
                        self.network.input_label_placeholder: label_batch})
 
-        self.train_summary_writer.add_summary(training_summary, i)
+        # self.train_summary_writer.add_summary(training_summary, i)
 
-        # TODO: fix the printing
-        print("Training at the end of iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
-            i, training_accuracy, train_streaming_accuracy, train_loss))
-        self.train_summary_writer.flush()
+        print("Training at the end of iteration %i (epoch %i):\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
+            i, epoch, training_accuracy, train_streaming_accuracy, train_loss))
+        # self.train_summary_writer.flush()
         return train_loss
 
     def load_checkpoint(self, path):
@@ -176,21 +173,24 @@ class FCNRunner:
 
         val_auc = val_auc[0][1]
 
-        self.valid_summary_writer.add_summary(validation_summary, i)
+        # self.valid_summary_writer.add_summary(validation_summary, i)
 
         print("\n\n" + "*" * 80)
         print("Validation after iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f\tAUC:\t%f" % (
             i, validation_accuracy, validation_streaming_accuracy, validation_loss, val_auc))
         print("*" * 80 + "\n\n")
-        self.valid_summary_writer.flush()
+        # self.valid_summary_writer.flush()
         return val_auc, validation_loss
 
-    def test_once(self):
+    def test_once(self, input_batch, label_batch):
         test_summary, test_loss, test_predictions, test_accuracy = self.session.run(
             [self.test_summaries_merged, self.test_loss, self.test_predictions, self.test_accuracy],
-            feed_dict={self.network.keep_prob: 1, self.network.is_training: False})
+            feed_dict={self.network.keep_prob: 1,
+                       self.network.is_training: False,
+                       self.network.input_features_placeholder: input_batch,
+                       self.network.input_label_placeholder: label_batch})
 
-        self.test_summary_writer.add_summary(test_summary, 1)
+        # self.test_summary_writer.add_summary(test_summary, 1)
 
         print("\n\n" + "*" * 80)
         print("Test accuracy at the end:\t%f\tloss:\t%f" % (
@@ -227,28 +227,25 @@ class FCNRunner:
         avg_validation_loss = []
         v_count = 0
         # validation_window = params['validation_window']
-        j = 0
+        j = 1
         for i in range(1, self.num_epochs + 1):
 
-            # TODO remove sklearn
-            train_df = sklearn.utils.shuffle(train_df)
+            train_df = train_df.sample(frac=1).reset_index(drop=True)
 
             for batch in range(number_of_train_batches):
                 begin_batch = batch * self.batch_size
                 batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
-                # TODO fix the slicing
-                input_batch = train_df.iloc[batch_slice, 1:-1]
-                label_batch = train_df.iloc[batch_slice, -1]
-                train_loss = self.train_once_dataframe(j, input_batch, label_batch)
+
+                input_batch = train_df.iloc[batch_slice, self.network.input_features_slicer]
+                label_batch = train_df.iloc[batch_slice, self.network.ground_truth_slicer]
+                train_loss = self.train_once_dataframe(i, j, input_batch, label_batch)
                 self.last_train_iteration = j
                 j += 1
 
             if i % self.validation_interval == 0:
 
-                # TODO understand the validation part (important)
-                # TODO fix the slicing
-                input_batch = validate_df.iloc[:, 1:-1]
-                label_batch = validate_df.iloc[:, -1]
+                input_batch = validate_df.iloc[:, self.network.input_features_slicer]
+                label_batch = validate_df.iloc[:, self.network.ground_truth_slicer]
 
                 accuracy, loss = self.validate_once(i, input_batch, label_batch)
                 val_acc.append(accuracy)
@@ -287,6 +284,8 @@ class FCNRunner:
             #         avg_validation_acc = []
         return Validation_Acc
 
-    def run_test(self):
+    def run_test(self, test_df):
         print("TESTING")
-        self.test_once()
+        input_batch = test_df.iloc[:, self.network.input_features_slicer]
+        label_batch = test_df.iloc[:, self.network.ground_truth_slicer]
+        self.test_once(input_batch, label_batch)

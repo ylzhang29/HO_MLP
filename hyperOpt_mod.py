@@ -54,7 +54,6 @@ def optimize():
         'batch_size': hyperopt.hp.choice('batch_size', [512]),
         'dropout_keep_probability': hyperopt.hp.choice('dropout_keep_probability', [0.8846418566190806]),
         'validation_window': hyperopt.hp.choice('validation_window', [10])
-    #     TODO probably you can pass in the dataframes like this, check in hyperopt documentation
     }
 
     try:

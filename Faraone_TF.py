@@ -18,20 +18,24 @@ def run_MLP(params, trows, vrows):
     iris_runner.bind_training_dataqueue_dataframe(trows,params)
     iris_runner.bind_validation_dataqueue_dataframe(vrows)
 
-    # TODO: fix the bind_test_dataqueue
     '''
     if "TEST" in config:
         test_path = config.get_rel_path("TEST","test_file")
         with tf.name_scope("test_data"):
-            test_rows = csv_reader.read_test_csv(test_path, int(config["TEST"]["batch_size"]))
-        iris_runner.bind_test_dataqueue(test_rows)
+            # TODO check this with Yanli
+            # test_rows = csv_reader.read_test_csv_dataframe(test_path, int(config["TEST"]["batch_size"]))
+            test_rows = csv_reader.read_csv_dataframe(test_path)
+        iris_runner.bind_test_dataqueue_dataframe(test_rows)
     '''
+
     iris_runner.initialize()
 
     if "TRAINING" in config:
         valid_acc = iris_runner.run_training_dataframe(trows, vrows)
-        iris_runner.close_session()
-    #if "TEST" in config:
-        #iris_runner.run_test()
+
+    # if "TEST" in config:
+    #     iris_runner.run_test(test_rows)
+
+    iris_runner.close_session()
 
     return 1 - valid_acc
