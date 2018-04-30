@@ -107,15 +107,15 @@ class FCNRunner:
             
         self.session.run(tf.local_variables_initializer())  # for streaming metrics
 
-        #self.create_summary_writers()
+        self.create_summary_writers()
 
         coord = tf.train.Coordinator()
         tf.train.start_queue_runners(sess=self.session, coord=coord)
         # start_queue_runners has to be called for any Tensorflow graph that uses queues.
 
 
-        #tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
-        #tensorboard_thread.start()
+        tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
+        tensorboard_thread.start()
 
     def create_summary_writers(self):
 
@@ -140,11 +140,11 @@ class FCNRunner:
             [self.train_op, self.train_loss, self.train_summaries_merged, self.train_accuracy, self.train_str_accu],
             feed_dict={self.network.keep_prob: self.keep_prob, self.network.is_training: True})
 
-        #self.train_summary_writer.add_summary(training_summary, i)
+        self.train_summary_writer.add_summary(training_summary, i)
 
         print("Training at the end of iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
             i, training_accuracy, train_streaming_accuracy, train_loss))
-        #self.train_summary_writer.flush()
+        self.train_summary_writer.flush()
 
     def load_checkpoint(self, path):
         self.saver.restore(self.session, path)
@@ -159,13 +159,13 @@ class FCNRunner:
 
         val_auc = val_auc[0][1]
 
-        #self.valid_summary_writer.add_summary(validation_summary, i)
+        self.valid_summary_writer.add_summary(validation_summary, i)
 
         print("\n\n" + "*" * 80)
         print("Validation after iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f\tAUC:\t%f" % (
             i, validation_accuracy, validation_streaming_accuracy, validation_loss, val_auc))
         print("*" * 80 + "\n\n")
-        #self.valid_summary_writer.flush()
+        self.valid_summary_writer.flush()
         return val_auc
 
     def test_once(self):
