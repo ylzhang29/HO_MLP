@@ -120,8 +120,8 @@ class FCNRunner:
         # tf.train.start_queue_runners(sess=self.session, coord=coord)
         # start_queue_runners has to be called for any Tensorflow graph that uses queues.
 
-        # tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
-        # tensorboard_thread.start()
+        tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
+        tensorboard_thread.start()
 
     def create_summary_writers(self):
 
