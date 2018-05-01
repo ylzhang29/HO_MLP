@@ -209,13 +209,19 @@ class FCNRunner:
 
         utils.background_process(["tensorboard", "--logdir=%s" % (log_dir_abs_path)])
 
+
+    def split_to_batches(self, input, batch_size):
+      length = input.shape[0]
+      remainder = length % batch_size
+      number_of_batches = length // batch_size
+      batches = []
+      if number_of_batches != 0:
+          batches = np.array_split(input[:length-remainder], number_of_batches)
+      if remainder != 0:
+          batches += [input[-remainder:]]
+      return batches
+
     def run_training_dataframe(self, train_df, validate_df):
-
-        training_size = train_df.shape[0]
-        number_of_train_batches = training_size // self.batch_size + 1
-
-        validate_size = validate_df.shape[0]
-        number_of_validate_batches = validate_size // self.batch_size + 1
 
         self.newest_checkpoint_path = ""
         self.last_train_iteration = 0
@@ -227,19 +233,15 @@ class FCNRunner:
         avg_validation_loss = []
         v_count = 0
         # validation_window = params['validation_window']
+
+        train_values = train_df.values
+
         j = 1
         for i in range(1, self.num_epochs + 1):
+            np.random.shuffle(train_values)
 
-            train_df = train_df.sample(frac=1).reset_index(drop=True)
-
-            for batch in range(number_of_train_batches):
-                begin_batch = batch * self.batch_size
-                batch_slice = slice(begin_batch, min(training_size, begin_batch + self.batch_size))
-
-                input_batch = train_df.iloc[batch_slice, self.network.input_features_slicer]
-                label_batch = train_df.iloc[batch_slice, self.network.ground_truth_slicer]
-                train_loss = self.train_once_dataframe(i, j, input_batch, label_batch)
-                self.last_train_iteration = j
+            for batch in self.split_to_batches(train_values, self.batch_size):
+                self.apply_batch(batch, i, j)
                 j += 1
 
             if i % self.validation_interval == 0:
@@ -283,6 +285,12 @@ class FCNRunner:
             #     else:
             #         avg_validation_acc = []
         return Validation_Acc
+
+    def apply_batch(self, batch, i, j):
+        input_batch = batch[:, self.network.input_features_slicer]
+        label_batch = batch[:, self.network.ground_truth_slicer]
+        self.train_once_dataframe(i, j, input_batch, label_batch)
+        self.last_train_iteration = j
 
     def run_test(self, test_df):
         print("TESTING")
