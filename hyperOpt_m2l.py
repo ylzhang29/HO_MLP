@@ -37,7 +37,7 @@ def optimize():
         'learning_rate': hyperopt.hp.choice('learning_rate', [0.0001, 0.001, 0.01]),
         'num_layers': hyperopt.hp.choice('num_layers', [1, 2, 3]),
         'layer_size': hyperopt.hp.choice('layer_size', [20, 50, 100]),
-        'batch_size': hyperopt.hp.choice('batch_size', [32, 64, 128]),
+        'batch_size': hyperopt.hp.choice('batch_size', [512, 512, 512]),
         'dropout_keep_probability': hyperopt.hp.choice('dropout_keep_probability', [1]),
         'validation_window': hyperopt.hp.choice('validation_window', [10])
     }
