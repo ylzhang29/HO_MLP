@@ -262,10 +262,10 @@ class FCNRunner:
                     avg_validation_acc.append(Validation_Acc)
                     avg_validation_loss.append(np.mean(val_loss))
 
-            if i > 0 and (i % self.val_check_after == 0):
+            if i > 0 and i % (self.validation_interval * self.val_check_after) == 0:
                 older_half_loss_mean = np.mean(avg_validation_loss[:len(avg_validation_loss) // 2])
                 newer_half_loss_mean = np.mean(avg_validation_loss[len(avg_validation_loss) // 2:])
-                if older_half_loss_mean < newer_half_loss_mean + 1e-2:
+                if older_half_loss_mean < (newer_half_loss_mean + 1e-4):
                     print(older_half_loss_mean)
                     print(newer_half_loss_mean)
                     print(j)
