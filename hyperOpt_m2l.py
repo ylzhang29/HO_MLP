@@ -7,6 +7,7 @@ import tensorflow as tf
 import re
 import pickle
 import csv_reader
+from hyperopt import STATUS_OK
 
 
 def objective(args):
@@ -22,9 +23,9 @@ def objective(args):
     params['validation_window'] = args['validation_window']
 
     with tf.Graph().as_default():
-        loss = run_MLP(params, trows, vrows)
+        valid_loss, train_loss = run_MLP(params, trows, vrows)
 
-    return loss
+    return {'loss': valid_loss, 'train_accu_str': train_loss, 'status': STATUS_OK }
 
 
 def optimize():
@@ -66,7 +67,8 @@ def optimize():
             trail[key] = trail[key][0]
         f.write("Trail no. : %i\n" % i)
         f.write(str(hyperopt.space_eval(space, trail)) + "\n")
-        f.write("Loss : " + str(tr['result']['loss']) + "\n")
+        f.write("Loss : " + str(tr['result']['loss']) + ", ")
+        f.write("Train streaming accuracy : " + str(tr['result']['train_accu_str']) + "\n")
         f.write("*" * 100 + "\n")
     f.close()
 

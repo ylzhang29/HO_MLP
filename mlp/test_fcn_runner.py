@@ -16,7 +16,7 @@ def fcn_runner():
    input = arrays(np.int32, shape=st.integers(1, 25), elements=st.integers(0, 1)),
    batch_size = st.integers(0, 25)
 )
-def test_split_to_batches(fcn_runner, input, batch_size):
+def test_split_to_batches(fcn_runner: FCNRunner, input: np.ndarray, batch_size: str):
     assume(batch_size > 0)
     c = fcn_runner.split_to_batches(input, batch_size)
     if len(c) > 1:

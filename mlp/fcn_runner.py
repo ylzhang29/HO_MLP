@@ -241,7 +241,7 @@ class FCNRunner:
             np.random.shuffle(train_values)
 
             for batch in self.split_to_batches(train_values, self.batch_size):
-                self.apply_batch(batch, i, j)
+                train_loss = self.apply_batch(batch, i, j)
                 j += 1
 
             if i % self.validation_interval == 0:
@@ -284,13 +284,14 @@ class FCNRunner:
             #         break
             #     else:
             #         avg_validation_acc = []
-        return Validation_Acc
+        return Validation_Acc, train_loss
 
     def apply_batch(self, batch, i, j):
         input_batch = batch[:, self.network.input_features_slicer]
         label_batch = batch[:, self.network.ground_truth_slicer]
-        self.train_once_dataframe(i, j, input_batch, label_batch)
+        loss = self.train_once_dataframe(i, j, input_batch, label_batch)
         self.last_train_iteration = j
+        return loss
 
     def run_test(self, test_df):
         print("TESTING")
