@@ -14,17 +14,17 @@ class FCN:
         self.ground_truth_slicer = config.get_as_slice("TASK0", "ground_truth_column")
         self.column_size = None
 
-        #self.l1_reg = [config.getfloat("TRAINING", "l1_regularization", fallback=0.0)]
-        #self.l2_reg = [config.getfloat("TRAINING", "l2_regularization", fallback=0.0)]
+        # self.l1_reg = [config.getfloat("TRAINING", "l1_regularization", fallback=0.0)]
+        # self.l2_reg = [config.getfloat("TRAINING", "l2_regularization", fallback=0.0)]
         self.l1_reg = params['l1_reg']
         self.l2_reg = params['l2_reg']
         self.learning_rate = params['learning_rate']
         self.l1_l2_regularizer = lambda t: tf.add(l1_regularizer(self.l1_reg)(t), l2_regularizer(self.l2_reg)(t))
-        #self.num_hidden_units = config.getint("NETWORK", "layer_size")
-        #self.num_layers = config.getint("NETWORK", "num_layers")
+        # self.num_hidden_units = config.getint("NETWORK", "layer_size")
+        # self.num_layers = config.getint("NETWORK", "num_layers")
         self.num_hidden_units = params['layer_size']
         self.num_layers = params['num_layers']
-        #self.learning_rate = config.getfloat("TRAINING", "learning_rate")
+        # self.learning_rate = config.getfloat("TRAINING", "learning_rate")
         self.is_residual = config.getboolean("TRAINING", "residual", fallback=False)
 
         self.batch_norm = config.getboolean("NETWORK", "batch_norm", fallback=True)
@@ -92,13 +92,13 @@ class FCN:
 
             correct_prediction = tf.equal(tf.argmax(last_out, 1), gt_labels)
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100
-            a = tf.cast(tf.argmax(last_out, 1),tf.float32)
-            b = tf.cast(gt_labels,tf.float32)
-            #print(tf.argmax(last_out, 1).dtype.name)
-            #print(gt_labels.dtype.name)
+            a = tf.cast(tf.argmax(last_out, 1), tf.float32)
+            b = tf.cast(gt_labels, tf.float32)
+            # print(tf.argmax(last_out, 1).dtype.name)
+            # print(gt_labels.dtype.name)
             # TODO: double check
             auc = tf.metrics.auc(b, a)
-            #auc = tf.contrib.metrics.streaming_auc(a, b)
+            # auc = tf.contrib.metrics.streaming_auc(a, b)
             # utils.variable_summaries(accuracy, "accuracy", corpus_tag)
             self.variable_summaries(accuracy, "accuracy", task_tag)
             self.accuracy = accuracy
@@ -120,8 +120,8 @@ class FCN:
             tf.add_to_collection(tf.GraphKeys.LOSSES, loss)
 
             str_mre, _ = streaming_mean_relative_error(last_out, ground_truth, ground_truth,
-                                                        updates_collections=tf.GraphKeys.UPDATE_OPS)
-            str_accu = tf.multiply(100.0 ,(1.0 - str_mre),name="acc_%s" % corpus_tag)
+                                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
+            str_accu = tf.multiply(100.0, (1.0 - str_mre), name="acc_%s" % corpus_tag)
             # utils.variable_summaries(str_accu, "streaming_accuracy", corpus_tag)
             self.variable_summaries(str_accu, "streaming_accuracy", task_tag)
 
@@ -132,8 +132,7 @@ class FCN:
                               tf.reduce_mean(tf.where(
                                   tf.equal(ground_truth, tf.zeros_like(ground_truth)),
                                   tf.zeros_like(ground_truth),
-                                  tf.divide(tf.abs(last_out - ground_truth), ground_truth))
-                              )
+                                  tf.divide(tf.abs(last_out - ground_truth), ground_truth)))
                               )
             # utils.variable_summaries(accuracy, "accuracy", corpus_tag)
             self.variable_summaries(accuracy, "accuracy", task_tag)
@@ -157,12 +156,10 @@ class FCN:
                  + tf.reduce_sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
         return losses
 
-
     def make_placeholders(self, column_size):
         input_features = tf.placeholder(dtype=tf.float32, shape=(None, column_size))
-        input_labels = tf.placeholder(dtype=tf.int64, shape=(None, ))
+        input_labels = tf.placeholder(dtype=tf.int64, shape=(None,))
         return input_features, input_labels
-
 
     def bind_graph_dataframe(self, corpus_tag, input_data_cols, batch_size, reuse=False, with_training_op=False):
 
@@ -186,7 +183,6 @@ class FCN:
             tf.summary.histogram("weight_hist", tf.concat(axis=0, values=all_weight_vars),
                                  collections=["%s_summaries" % corpus_tag])
 
-
             # self.summaries_merged = self.get_summaries(corpus_tag)
 
     def bind_graph(self, corpus_tag, input_data_cols, batch_size, reuse=False, with_training_op=False):
@@ -195,8 +191,6 @@ class FCN:
         # Any of the built ops, e.g. self.loss,
         # operates on the input data (given as arguments to this function) every time it is called.
         # If reuse=True , the TF graph is not built, but simply reused from the memory with the most recent parameters.
-
-
 
         input_features = tf.reshape(tf.transpose(tf.stack(input_data_cols[self.input_features_slicer])),
                                     [batch_size, -1])

@@ -36,9 +36,9 @@ def optimize():
     space = {
         'l1_reg': hyperopt.hp.choice('l1_reg', [0.002, 0.001, 0.0001]),
         'l2_reg': hyperopt.hp.choice('l2_reg', [0.002, 0.001]),
-        'learning_rate': hyperopt.hp.choice('learning_rate', [0.0001, 0.001]),
-        'num_layers': hyperopt.hp.choice('num_layers', [1, 2, 3]),
-        'layer_size': hyperopt.hp.choice('layer_size', [1164]),
+        'learning_rate': hyperopt.hp.choice('learning_rate', [0.0001, 0.0001]),
+        'num_layers': hyperopt.hp.choice('num_layers', [4, 5, 6]),
+        'layer_size': hyperopt.hp.choice('layer_size', [128, 256, 512]),
         'batch_size': hyperopt.hp.choice('batch_size', [32, 64, 128]),
         'dropout_keep_probability': hyperopt.hp.choice('dropout_keep_probability', [0.5, 0.4, 0.3]),
         'validation_window': hyperopt.hp.choice('validation_window', [5])

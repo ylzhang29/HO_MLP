@@ -5,3 +5,5 @@ checkpoints/
 log/
 trial_obj.pkl
 trials.log
+**/.DS_Store
+.pytest_cache

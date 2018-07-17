@@ -152,7 +152,7 @@ class FCNRunner:
         print("Training at the end of iteration %i (epoch %i):\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
             i, epoch, training_accuracy, train_streaming_accuracy, train_loss))
         # self.train_summary_writer.flush()
-        return train_loss
+        return train_streaming_accuracy
 
     def load_checkpoint(self, path):
         self.saver.restore(self.session, path)
@@ -235,13 +235,14 @@ class FCNRunner:
         # validation_window = params['validation_window']
 
         train_values = train_df.values
+        train_stream_acc = 0
 
         j = 1
         for i in range(1, self.num_epochs + 1):
             np.random.shuffle(train_values)
 
             for batch in self.split_to_batches(train_values, self.batch_size):
-                train_loss = self.apply_batch(batch, i, j)
+                train_stream_acc = self.apply_batch(batch, i, j)
                 j += 1
 
             if i % self.validation_interval == 0:
@@ -284,14 +285,14 @@ class FCNRunner:
             #         break
             #     else:
             #         avg_validation_acc = []
-        return Validation_Acc, train_loss
+        return Validation_Acc, train_stream_acc
 
     def apply_batch(self, batch, i, j):
         input_batch = batch[:, self.network.input_features_slicer]
         label_batch = batch[:, self.network.ground_truth_slicer]
-        loss = self.train_once_dataframe(i, j, input_batch, label_batch)
+        train_streaming_accu = self.train_once_dataframe(i, j, input_batch, label_batch)
         self.last_train_iteration = j
-        return loss
+        return train_streaming_accu
 
     def run_test(self, test_df):
         print("TESTING")
