@@ -1,3 +1,5 @@
+import csv
+
 import config_reader
 import csv_reader
 import utils
@@ -21,6 +23,7 @@ def objective(args):
     params['batch_size'] = args['batch_size']
     params['dropout_keep_probability'] = args['dropout_keep_probability']
     params['validation_window'] = args['validation_window']
+    params['total_columns'] = total_columns
 
     with tf.Graph().as_default():
         valid_loss, train_loss = run_MLP(params, trows, vrows)
@@ -75,9 +78,13 @@ def optimize():
 
 
 def main():
-    global trows, vrows
+    global trows, vrows, total_columns
 
     config = config_reader.read_config(utils.abs_path_of("config/default.ini"))
+
+    with open(config.get_rel_path("PATHS", "training_file")) as f:
+        temporary_reader = csv.reader(f, delimiter=',')
+        total_columns = len(next(temporary_reader))
 
     trows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "training_file"))
     vrows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "validation_file"))
@@ -88,4 +95,5 @@ def main():
 
 if __name__ == '__main__':
     vrows = trows = ""
+    total_columns = 0
     main()

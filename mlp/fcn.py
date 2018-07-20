@@ -11,8 +11,9 @@ class FCN:
 
     def __init__(self, config, params):
         self.input_features_slicer = config.get_as_slice("FEATURES", "columns")
-        self.ground_truth_slicer = config.get_as_slice("TASK0", "ground_truth_column")
+
         self.column_size = None
+        self.total_column_size = params['total_columns']
 
         # self.l1_reg = [config.getfloat("TRAINING", "l1_regularization", fallback=0.0)]
         # self.l2_reg = [config.getfloat("TRAINING", "l2_regularization", fallback=0.0)]
@@ -33,7 +34,18 @@ class FCN:
 
         self.config_task_sections = get_task_sections(config)
 
+        self.reg_ground_truth_slicer = None
+        self.ground_truth_slicer = None
+        self.populate_ground_truth(self.config_task_sections, config)
+
         self.add_placeholders()
+
+    def populate_ground_truth(self, task_config, config):
+        for task in task_config:
+            if config.get(task, 'type') == 'linear':
+                self.reg_ground_truth_slicer = config.get_as_slice(task, "ground_truth_column")
+            elif config.get(task, 'type') == 'classification':
+                self.ground_truth_slicer = config.get_as_slice(task, "ground_truth_column")
 
     def variable_summaries(self, var, name, task_tag):
         """Attach a lot of summaries to a Tensor."""
@@ -93,11 +105,14 @@ class FCN:
             correct_prediction = tf.equal(tf.argmax(last_out, 1), gt_labels)
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100
             a = tf.cast(tf.argmax(last_out, 1), tf.float32)
-            b = tf.cast(gt_labels, tf.float32)
+            b = tf.one_hot(gt_labels, num_classes)
+
+            a = tf.Print(a, [a], 'aaaaaaaaaaaaaaaaaaaaaaaaaa')
+
             # print(tf.argmax(last_out, 1).dtype.name)
             # print(gt_labels.dtype.name)
             # TODO: double check
-            auc = tf.metrics.auc(b, a)
+            auc = tf.metrics.auc(b, self.predictions)
             # auc = tf.contrib.metrics.streaming_auc(a, b)
             # utils.variable_summaries(accuracy, "accuracy", corpus_tag)
             self.variable_summaries(accuracy, "accuracy", task_tag)
@@ -138,12 +153,12 @@ class FCN:
             self.variable_summaries(accuracy, "accuracy", task_tag)
             self.accuracy = accuracy
 
-    def add_all_outputs_and_losses(self, input_features, ground_truth, corpus_tag):
+    def add_all_outputs_and_losses(self, input_features, ground_truth, reg_ground_truth, corpus_tag):
         hidden_output = self.make_hidden_FN_layers(input_features)
         for task_name, task_config in self.config_task_sections.items():
             if task_config["type"] == "linear":
                 task_name += "_lin"
-                self.add_linear_output_layer(hidden_output, ground_truth, corpus_tag, task_name)
+                self.add_linear_output_layer(hidden_output, reg_ground_truth, corpus_tag, task_name)
             elif task_config["type"] == "classification":
                 task_name += "_classf"
                 num_classes = int(task_config["num_classes"])
@@ -157,20 +172,28 @@ class FCN:
         return losses
 
     def make_placeholders(self, column_size):
+        # Fix the shapes
         input_features = tf.placeholder(dtype=tf.float32, shape=(None, column_size))
+
         input_labels = tf.placeholder(dtype=tf.int64, shape=(None,))
-        return input_features, input_labels
+        input_labels = tf.placeholder(dtype=tf.int64, shape=(None,))
+
+        reg_input_labels = tf.placeholder(dtype=tf.float32, shape=(None,))
+
+        return input_features, input_labels, reg_input_labels
 
     def bind_graph_dataframe(self, corpus_tag, input_data_cols, batch_size, reuse=False, with_training_op=False):
 
         if self.column_size is None:
             self.column_size = input_data_cols.iloc[:, self.input_features_slicer].shape[1]
-            self.input_features_placeholder, self.input_label_placeholder = self.make_placeholders(self.column_size)
+            self.input_features_placeholder, self.input_label_placeholder, self.reg_input_placeholder = \
+                self.make_placeholders(self.column_size)
 
         with tf.variable_scope("network", reuse=reuse):
             # self.Y_logits = self.make_FN_layers()
             loss_sum = self.add_all_outputs_and_losses(self.input_features_placeholder,
                                                        self.input_label_placeholder,
+                                                       self.reg_input_placeholder,
                                                        corpus_tag)
 
             updates_op = tf.get_collection(tf.GraphKeys.UPDATE_OPS)

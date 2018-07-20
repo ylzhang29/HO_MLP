@@ -76,7 +76,8 @@ class FCNRunner:
         self.valid_loss = self.network.loss
         self.valid_str_accu = self.network.streaming_accu_op
         self.valid_accuracy = self.network.accuracy
-        self.valid_auc = self.network.auc
+        if self.network.ground_truth_slicer is not None:
+            self.valid_auc = self.network.auc
 
         self.valid_summaries_merged = self.network.get_summaries()
 
@@ -139,13 +140,20 @@ class FCNRunner:
     def test(self, test_features, test_labels):
         pass
 
-    def train_once_dataframe(self, epoch, i, input_batch, label_batch):
+    def train_once_dataframe(self, epoch, i, input_batch, label_batch, reg_label_batch):
+        feed_dict = {self.network.keep_prob: self.keep_prob,
+                       self.network.is_training: True,
+                       self.network.input_features_placeholder: input_batch}
+
+        if label_batch is not None:
+            feed_dict.update({self.network.input_label_placeholder: label_batch})
+
+        if reg_label_batch is not None:
+            feed_dict.update({self.network.reg_input_placeholder: reg_label_batch})
+
         _, train_loss, training_summary, training_accuracy, train_streaming_accuracy = self.session.run(
             [self.train_op, self.train_loss, self.train_summaries_merged, self.train_accuracy, self.train_str_accu],
-            feed_dict={self.network.keep_prob: self.keep_prob,
-                       self.network.is_training: True,
-                       self.network.input_features_placeholder: input_batch,
-                       self.network.input_label_placeholder: label_batch})
+            feed_dict=feed_dict)
 
         # self.train_summary_writer.add_summary(training_summary, i)
 
@@ -158,20 +166,25 @@ class FCNRunner:
         self.saver.restore(self.session, path)
         print("Checkpoint loaded from %s" % path)
 
-    def validate_once(self, i, input_batch, label_batch):
+    def validate_once(self, i, input_batch, label_batch, reg_label_batch):
+        feed_dict = {self.network.keep_prob: 1,
+                     self.network.is_training: False,
+                     self.network.input_features_placeholder: input_batch}
+
+        if label_batch is not None:
+            feed_dict.update({self.network.input_label_placeholder: label_batch})
+
+        if reg_label_batch is not None:
+            feed_dict.update({self.network.reg_input_placeholder: reg_label_batch})
+
         validation_summary, validation_accuracy, validation_streaming_accuracy, validation_loss = self.session.run(
             [self.valid_summaries_merged, self.valid_accuracy, self.valid_str_accu, self.valid_loss],
-            feed_dict={self.network.keep_prob: 1,
-                       self.network.is_training: False,
-                       self.network.input_features_placeholder: input_batch,
-                       self.network.input_label_placeholder: label_batch})
-        val_auc = self.session.run(
-            [self.valid_auc], feed_dict={self.network.keep_prob: 1,
-                                         self.network.is_training: False,
-                                         self.network.input_features_placeholder: input_batch,
-                                         self.network.input_label_placeholder: label_batch})
+            feed_dict=feed_dict)
 
-        val_auc = val_auc[0][1]
+        val_auc = -1
+        if label_batch is not None:
+            val_auc = self.session.run([self.valid_auc], feed_dict=feed_dict)
+            val_auc = val_auc[0][1]
 
         # self.valid_summary_writer.add_summary(validation_summary, i)
 
@@ -182,13 +195,21 @@ class FCNRunner:
         # self.valid_summary_writer.flush()
         return val_auc, validation_loss
 
-    def test_once(self, input_batch, label_batch):
+    def test_once(self, input_batch, label_batch, reg_label_batch):
+
+        feed_dict = {self.network.keep_prob: 1,
+                     self.network.is_training: False,
+                     self.network.input_features_placeholder: input_batch}
+
+        if label_batch is not None:
+            feed_dict.update({self.network.input_label_placeholder: label_batch})
+
+        if reg_label_batch is not None:
+            feed_dict.update({self.network.reg_input_placeholder: reg_label_batch})
+
         test_summary, test_loss, test_predictions, test_accuracy = self.session.run(
             [self.test_summaries_merged, self.test_loss, self.test_predictions, self.test_accuracy],
-            feed_dict={self.network.keep_prob: 1,
-                       self.network.is_training: False,
-                       self.network.input_features_placeholder: input_batch,
-                       self.network.input_label_placeholder: label_batch})
+            feed_dict=feed_dict)
 
         # self.test_summary_writer.add_summary(test_summary, 1)
 
@@ -237,6 +258,9 @@ class FCNRunner:
         train_values = train_df.values
         train_stream_acc = 0
 
+        label_batch = None
+        reg_label_batch = None
+
         j = 1
         for i in range(1, self.num_epochs + 1):
             np.random.shuffle(train_values)
@@ -248,9 +272,14 @@ class FCNRunner:
             if i % self.validation_interval == 0:
 
                 input_batch = validate_df.iloc[:, self.network.input_features_slicer]
-                label_batch = validate_df.iloc[:, self.network.ground_truth_slicer]
 
-                accuracy, loss = self.validate_once(i, input_batch, label_batch)
+                if self.network.ground_truth_slicer:
+                    label_batch = validate_df.iloc[:, self.network.ground_truth_slicer]
+
+                if self.network.reg_ground_truth_slicer:
+                    reg_label_batch = validate_df.iloc[:, self.network.reg_ground_truth_slicer]
+
+                accuracy, loss = self.validate_once(i, input_batch, label_batch, reg_label_batch)
                 val_acc.append(accuracy)
                 val_loss.append(loss)
                 v_count += 1
@@ -288,14 +317,31 @@ class FCNRunner:
         return Validation_Acc, train_stream_acc
 
     def apply_batch(self, batch, i, j):
+
         input_batch = batch[:, self.network.input_features_slicer]
-        label_batch = batch[:, self.network.ground_truth_slicer]
-        train_streaming_accu = self.train_once_dataframe(i, j, input_batch, label_batch)
+        label_batch = None
+        reg_label_batch = None
+
+        if self.network.ground_truth_slicer:
+            label_batch = batch[:, self.network.ground_truth_slicer]
+
+        if self.network.reg_ground_truth_slicer:
+            reg_label_batch = batch[:, self.network.reg_ground_truth_slicer]
+
+        train_streaming_accu = self.train_once_dataframe(i, j, input_batch, label_batch, reg_label_batch)
         self.last_train_iteration = j
         return train_streaming_accu
 
     def run_test(self, test_df):
         print("TESTING")
+        label_batch = None
+        reg_label_batch = None
+
         input_batch = test_df.iloc[:, self.network.input_features_slicer]
-        label_batch = test_df.iloc[:, self.network.ground_truth_slicer]
-        self.test_once(input_batch, label_batch)
+        if self.network.ground_truth_slicer:
+            label_batch = test_df.iloc[:, self.network.ground_truth_slicer]
+
+        if self.network.reg_ground_truth_slicer:
+            reg_label_batch = test_df.iloc[:, self.network.reg_ground_truth_slicer]
+
+        self.test_once(input_batch, label_batch, reg_label_batch)
