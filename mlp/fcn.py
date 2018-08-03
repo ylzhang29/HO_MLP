@@ -107,8 +107,6 @@ class FCN:
             a = tf.cast(tf.argmax(last_out, 1), tf.float32)
             b = tf.one_hot(gt_labels, num_classes)
 
-            a = tf.Print(a, [a], 'aaaaaaaaaaaaaaaaaaaaaaaaaa')
-
             # print(tf.argmax(last_out, 1).dtype.name)
             # print(gt_labels.dtype.name)
             # TODO: double check
@@ -176,8 +174,6 @@ class FCN:
         input_features = tf.placeholder(dtype=tf.float32, shape=(None, column_size))
 
         input_labels = tf.placeholder(dtype=tf.int64, shape=(None,))
-        input_labels = tf.placeholder(dtype=tf.int64, shape=(None,))
-
         reg_input_labels = tf.placeholder(dtype=tf.float32, shape=(None,))
 
         return input_features, input_labels, reg_input_labels

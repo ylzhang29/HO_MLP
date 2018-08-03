@@ -1,3 +1,5 @@
+import csv
+
 from Faraone_TF import run_MLP
 import hyperopt
 import tensorflow as tf
@@ -23,6 +25,12 @@ def objective(args):
 
     trows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "training_file"))
     vrows = csv_reader.read_csv_dataframe(config.get_rel_path("PATHS", "validation_file"))
+
+    with open(config.get_rel_path("PATHS", "training_file")) as f:
+        temporary_reader = csv.reader(f, delimiter=',')
+        total_columns = len(next(temporary_reader))
+
+    params['total_columns'] = total_columns
 
     with tf.Graph().as_default():
         loss = run_MLP(params, trows, vrows)
