@@ -1,4 +1,4 @@
-import pandas
+import pandas as pd
 import numpy as np
 
 
@@ -17,11 +17,22 @@ def create_random_data(csv_name, data, data_size):
     np.savetxt(csv_name, data_np, delimiter=',', fmt="%1.4f")
 
 
-data = pandas.read_csv('vars.csv', sep=';')
+# data = pandas.read_csv('vars.csv', sep=';')
 
-create_random_data('rand_train.csv', data, 75000)
-create_random_data('rand_valid.csv', data, 15000)
+# create_random_data('rand_train.csv', data, 75000)
+# create_random_data('rand_valid.csv', data, 15000)
 
 # np.save('ran_data.npy', data_np)
 
+
+def generate(columns, size, filename):
+    df = pd.DataFrame()
+    for i in range(columns):
+        df[i] = np.random.randint(0, 2, size)
+
+    df.to_csv(filename, index=False)
+
+
+generate(5, 120, 'a-train.csv')
+generate(5, 100, 'a-valid.csv')
 
