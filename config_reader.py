@@ -1,15 +1,24 @@
 import configparser
 import os
 import utils
+import re
 
 class My_Config_Parser(configparser.ConfigParser):
     #def __init__(self, *args, **kwargs):
         #super().__init__(*args, **kwargs)
 
-    def get_as_slice(self, *args, **kwargs):
+    def get_as_slice(self, num_cols, *args, **kwargs):
         raw_get = self.get(*args, **kwargs)
-        if ":" in raw_get:
-            return slice(*map(int, raw_get.split(":")))
+        matcher = re.search('(-?\d)*:(-?\d)*', raw_get)
+
+        if ':' in raw_get:
+            if matcher.group(1) and matcher.group(2):
+                return slice(int(matcher.group(1)), int(matcher.group(2)))
+            elif matcher.group(2):
+                return slice(0, int(matcher.group(2)))
+            else:
+                return slice(int(matcher.group(1), num_cols))
+
         else:
             return int(raw_get)
 

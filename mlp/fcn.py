@@ -10,10 +10,11 @@ from config_reader import get_task_sections
 class FCN:
 
     def __init__(self, config, params):
-        self.input_features_slicer = config.get_as_slice("FEATURES", "columns")
 
         self.column_size = None
         self.total_column_size = params['total_columns']
+
+        self.input_features_slicer = config.get_as_slice(self.total_column_size, "FEATURES", "columns")
 
         # self.l1_reg = [config.getfloat("TRAINING", "l1_regularization", fallback=0.0)]
         # self.l2_reg = [config.getfloat("TRAINING", "l2_regularization", fallback=0.0)]
@@ -43,9 +44,9 @@ class FCN:
     def populate_ground_truth(self, task_config, config):
         for task in task_config:
             if config.get(task, 'type') == 'linear':
-                self.reg_ground_truth_slicer = config.get_as_slice(task, "ground_truth_column")
+                self.reg_ground_truth_slicer = config.get_as_slice(self.total_column_size, task, "ground_truth_column")
             elif config.get(task, 'type') == 'classification':
-                self.ground_truth_slicer = config.get_as_slice(task, "ground_truth_column")
+                self.ground_truth_slicer = config.get_as_slice(self.total_column_size, task, "ground_truth_column")
                 self.multilabel = bool(config.get(task, 'multilabel'))
 
     def variable_summaries(self, var, name, task_tag):

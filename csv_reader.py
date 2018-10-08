@@ -29,7 +29,7 @@ def read_csv(filename, batch_size, stratify_task="", config=None):
             assert stratify_task in config
             assert config.get(stratify_task, "type", fallback="") == "classification"
 
-            slicer = config.get_as_slice(stratify_task, "ground_truth_column")
+            slicer = config.get_as_slice(num_cols, stratify_task, "ground_truth_column")
             labels = tf.to_int64(decoded[slicer])
 
             num_classes = config.getint(stratify_task, "num_classes")
