@@ -39,6 +39,7 @@ class FCNRunner:
         # config:
         self.log_folder = config.get_rel_path("PATHS", "log_folder")
         self.experiment_ID = config.get("PROCESS", "experiment_ID") or utils.date_time_string()
+        self.max_checkpoints = config.getint("PROCESS", "max_checkpoints") or 5
         self.validation_interval = config.getint("PROCESS", "validation_interval", fallback=15)
         # self.keep_prob = config.getfloat("TRAINING", "dropout_keep_probability", fallback=1.0)
         self.keep_prob = params['dropout_keep_probability']
@@ -99,28 +100,30 @@ class FCNRunner:
         config = self.config
         self.session = tf.Session()
 
-        # self.saver = tf.train.Saver(tf.global_variables())
         self.checkpoint_every = config.getint("PROCESS", "checkpoint_every")
         self.checkpoint_path = config.get_rel_path("PATHS", "checkpoint_dir") + "/training.ckpt"
 
-        # load_checkpoint = config.get("PROCESS", "initialize_with_checkpoint") or None
-        # if load_checkpoint:
-        # self.load_checkpoint(load_checkpoint)
+        load_checkpoint = config.get("PROCESS", "initialize_with_checkpoint") or None
+        if load_checkpoint:
+            self.load_checkpoint(load_checkpoint)
+        else:
+            self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=self.max_checkpoints)
 
         if config.getint("TRAINING", "num_epochs") > 0:
             self.session.run(tf.global_variables_initializer())
 
         self.session.run(tf.local_variables_initializer())  # for streaming metrics
 
-        # self.create_summary_writers()
+
+        self.create_summary_writers()
 
         # TODO: No need for queue_runners anymore
         # coord = tf.train.Coordinator()
         # tf.train.start_queue_runners(sess=self.session, coord=coord)
         # start_queue_runners has to be called for any Tensorflow graph that uses queues.
 
-        # tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
-        # tensorboard_thread.start()
+        tensorboard_thread = threading.Thread(target=self.start_tensorboard, args=())
+        tensorboard_thread.start()
 
     def create_summary_writers(self):
 
@@ -155,14 +158,15 @@ class FCNRunner:
             [self.train_op, self.train_loss, self.train_summaries_merged, self.train_accuracy, self.train_str_accu],
             feed_dict=feed_dict)
 
-        # self.train_summary_writer.add_summary(training_summary, i)
+        self.train_summary_writer.add_summary(training_summary, i)
 
         print("Training at the end of iteration %i (epoch %i):\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
             i, epoch, training_accuracy, train_streaming_accuracy, train_loss))
-        # self.train_summary_writer.flush()
+        self.train_summary_writer.flush()
         return train_streaming_accuracy
 
     def load_checkpoint(self, path):
+        self.saver = tf.train.import_meta_graph('%s.meta' % path)
         self.saver.restore(self.session, path)
         print("Checkpoint loaded from %s" % path)
 
@@ -186,13 +190,13 @@ class FCNRunner:
             val_auc = self.session.run([self.valid_auc], feed_dict=feed_dict)
             val_auc = val_auc[0][1]
 
-        # self.valid_summary_writer.add_summary(validation_summary, i)
+        self.valid_summary_writer.add_summary(validation_summary, i)
 
         print("\n\n" + "*" * 80)
         print("Validation after iteration %i:\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f\tAUC:\t%f" % (
             i, validation_accuracy, validation_streaming_accuracy, validation_loss, val_auc))
         print("*" * 80 + "\n\n")
-        # self.valid_summary_writer.flush()
+        self.valid_summary_writer.flush()
         return val_auc, validation_loss
 
     def test_once(self, input_batch, label_batch, reg_label_batch):
@@ -211,13 +215,13 @@ class FCNRunner:
             [self.test_summaries_merged, self.test_loss, self.test_predictions, self.test_accuracy],
             feed_dict=feed_dict)
 
-        # self.test_summary_writer.add_summary(test_summary, 1)
+        self.test_summary_writer.add_summary(test_summary, 1)
 
         print("\n\n" + "*" * 80)
         print("Test accuracy at the end:\t%f\tloss:\t%f" % (
             test_accuracy, test_loss))
         print("*" * 80 + "\n\n")
-        # self.test_summary_writer.flush()
+        self.test_summary_writer.flush()
 
         np.savetxt(self.test_pred_path, test_predictions, '%.7f')
         print("Test predictions/scores saved in %s " % self.test_pred_path)
@@ -241,6 +245,11 @@ class FCNRunner:
       if remainder != 0:
           batches += [input[-remainder:]]
       return batches
+
+
+    def save_model(self, iteration):
+        path = "%s/%s_train" % (self.checkpoint_path, self.experiment_ID)
+        self.saver.save(self.session, path, iteration)
 
     def run_training_dataframe(self, train_df, validate_df):
 
@@ -269,6 +278,9 @@ class FCNRunner:
                 train_stream_acc = self.apply_batch(batch, i, j)
                 j += 1
 
+            if i % self.checkpoint_every == 0:
+                self.save_model(i)
+
             if i % self.validation_interval == 0:
 
                 input_batch = validate_df.iloc[:, self.network.input_features_slicer]
@@ -295,6 +307,7 @@ class FCNRunner:
             if i > 0 and i % (self.validation_interval * self.val_check_after) == 0:
                 older_half_loss_mean = np.mean(avg_validation_loss[:len(avg_validation_loss) // 2])
                 newer_half_loss_mean = np.mean(avg_validation_loss[len(avg_validation_loss) // 2:])
+                # if older_half_loss_mean < 0.95 * newer_half_loss_mean:
                 if older_half_loss_mean < (newer_half_loss_mean + 1e-4):
                     print(older_half_loss_mean)
                     print(newer_half_loss_mean)

@@ -141,6 +141,7 @@ class FCN:
             self.streaming_accu_op = control_flow_ops.with_dependencies(updates_op, str_accu)
 
             correct_prediction = tf.equal(tf.argmax(last_out, 1), gt_labels)
+
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) * 100
             a = tf.cast(tf.argmax(last_out, 1), tf.float32)
             b = tf.one_hot(gt_labels, num_classes)
