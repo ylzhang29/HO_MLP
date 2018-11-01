@@ -73,7 +73,8 @@ class FCNRunner:
         # now reuse the graph to bind new OPs that handle the validation data:
         valid_batch_size = config.getint("TRAINING", "validation_batch_size")
         with tf.name_scope("Valid"):
-            self.network.bind_graph_dataframe("VALID", valid_data_cols, valid_batch_size, reuse=True, with_training_op=False)
+            self.network.bind_graph_dataframe("VALID", valid_data_cols, valid_batch_size, reuse=True,
+                                              with_training_op=False)
         self.valid_loss = self.network.loss
         self.valid_str_accu = self.network.streaming_accu_op
         self.valid_accuracy = self.network.accuracy
@@ -88,7 +89,8 @@ class FCNRunner:
         # now resuse the graph to bind new OPS that handle the test data:
         test_batch_size = config.getint("TEST", "batch_size")
         with tf.name_scope("Test"):
-            self.network.bind_graph_dataframe("TEST", test_data_cols, test_batch_size, reuse=True, with_training_op=False)
+            self.network.bind_graph_dataframe("TEST", test_data_cols, test_batch_size, reuse=True,
+                                              with_training_op=False)
         self.test_loss = self.network.loss
         self.test_str_accu = self.network.streaming_accu_op
         self.test_accuracy = self.network.accuracy
@@ -113,7 +115,6 @@ class FCNRunner:
             self.session.run(tf.global_variables_initializer())
 
         self.session.run(tf.local_variables_initializer())  # for streaming metrics
-
 
         self.create_summary_writers()
 
@@ -145,8 +146,8 @@ class FCNRunner:
 
     def train_once_dataframe(self, epoch, i, input_batch, label_batch, reg_label_batch):
         feed_dict = {self.network.keep_prob: self.keep_prob,
-                       self.network.is_training: True,
-                       self.network.input_features_placeholder: input_batch}
+                     self.network.is_training: True,
+                     self.network.input_features_placeholder: input_batch}
 
         if label_batch is not None:
             feed_dict.update({self.network.input_label_placeholder: label_batch})
@@ -234,21 +235,23 @@ class FCNRunner:
 
         utils.background_process(["tensorboard", "--logdir=%s" % (log_dir_abs_path)])
 
-
     def split_to_batches(self, input, batch_size):
-      length = input.shape[0]
-      remainder = length % batch_size
-      number_of_batches = length // batch_size
-      batches = []
-      if number_of_batches != 0:
-          batches = np.array_split(input[:length-remainder], number_of_batches)
-      if remainder != 0:
-          batches += [input[-remainder:]]
-      return batches
-
+        length = input.shape[0]
+        remainder = length % batch_size
+        number_of_batches = length // batch_size
+        batches = []
+        if number_of_batches != 0:
+            batches = np.array_split(input[:length - remainder], number_of_batches)
+        if remainder != 0:
+            batches += [input[-remainder:]]
+        return batches
 
     def save_model(self, iteration):
-        path = "%s/%s_train" % (self.checkpoint_path, self.experiment_ID)
+
+        experiment_ID = "L%s_H%s_L1%s_L2%s2_B%s_LR%s" % (
+            self.network.num_layers, self.network.num_hidden_units, self.network.l1_reg, self.network.l2_reg,
+            self.batch_size, self.network.learning_rate)  # empty means auto name
+        path = "%s/%s_train" % (self.checkpoint_path, experiment_ID)
         self.saver.save(self.session, path, iteration)
 
     def run_training_dataframe(self, train_df, validate_df):
@@ -312,7 +315,7 @@ class FCNRunner:
                     print(older_half_loss_mean)
                     print(newer_half_loss_mean)
                     print(j)
-                    print("_"*50)
+                    print("_" * 50)
                     break
                 else:
                     avg_validation_acc = []
