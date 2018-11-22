@@ -29,11 +29,11 @@ def run_MLP(params, trows, vrows):
     iris_runner.initialize()
 
     if "TRAINING" in config:
-        valid_acc, train_loss = iris_runner.run_training_dataframe(trows, vrows)
+        valid_acc, train_loss, train_auc, valid_loss = iris_runner.run_training_dataframe(trows, vrows)
 
     if "TEST" in config:
         iris_runner.run_test(test_rows)
 
     iris_runner.close_session()
 
-    return 1 - valid_acc, train_loss
+    return 1 - valid_acc, train_loss, train_auc, valid_loss

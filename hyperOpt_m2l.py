@@ -26,9 +26,14 @@ def objective(args):
     params['total_columns'] = total_columns
 
     with tf.Graph().as_default():
-        valid_loss, train_loss = run_MLP(params, trows, vrows)
+        inverse_valid_auc, train_loss, train_auc, valid_loss = run_MLP(params, trows, vrows)
 
-    return {'loss': valid_loss, 'train_accu_str': train_loss, 'status': STATUS_OK }
+    return {'loss': inverse_valid_auc,
+            'train_accu_str': train_loss,
+            'train_auc': train_auc,
+            'valid_loss': valid_loss,
+            'valid_auc': 1 - inverse_valid_auc,
+            'status': STATUS_OK}
 
 
 def optimize():
@@ -71,8 +76,10 @@ def optimize():
             trail[key] = trail[key][0]
         f.write("Trail no. : %i\n" % i)
         f.write(str(hyperopt.space_eval(space, trail)) + "\n")
-        f.write("Loss : " + str(tr['result']['loss']) + ", ")
-        f.write("Train streaming accuracy : " + str(tr['result']['train_accu_str']) + "\n")
+        f.write("Loss : " + str(1 - tr['result']['loss']) + ", ")
+        f.write("Valid auc : " + str(1 - tr['result']['valid_auc']) + ", ")
+        f.write("Train streaming accuracy : " + str(tr['result']['train_accu_str']) + ", ")
+        f.write("Train auc: " + str(tr['result']['train_auc']) + "\n")
         f.write("*" * 100 + "\n")
     f.close()
 

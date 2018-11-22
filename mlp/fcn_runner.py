@@ -64,6 +64,7 @@ class FCNRunner:
         self.train_loss = self.network.loss
         self.train_str_accu = self.network.streaming_accu_op
         self.train_accuracy = self.network.accuracy
+        self.train_auc = self.network.auc
 
         self.train_summaries_merged = self.network.get_summaries()
 
@@ -155,8 +156,9 @@ class FCNRunner:
         if reg_label_batch is not None:
             feed_dict.update({self.network.reg_input_placeholder: reg_label_batch})
 
-        _, train_loss, training_summary, training_accuracy, train_streaming_accuracy = self.session.run(
-            [self.train_op, self.train_loss, self.train_summaries_merged, self.train_accuracy, self.train_str_accu],
+        _, train_loss, training_summary, training_accuracy, train_streaming_accuracy, train_auc = self.session.run(
+            [self.train_op, self.train_loss, self.train_summaries_merged, self.train_accuracy, self.train_str_accu,
+             self.train_auc],
             feed_dict=feed_dict)
 
         self.train_summary_writer.add_summary(training_summary, i)
@@ -164,7 +166,7 @@ class FCNRunner:
         print("Training at the end of iteration %i (epoch %i):\tAccuracy:\t%f\tStreaming Accu:\t%f\tloss:\t%f" % (
             i, epoch, training_accuracy, train_streaming_accuracy, train_loss))
         self.train_summary_writer.flush()
-        return train_streaming_accuracy
+        return train_streaming_accuracy, train_auc[0]
 
     def load_checkpoint(self, path):
         self.saver = tf.train.import_meta_graph('%s.meta' % path)
@@ -277,9 +279,14 @@ class FCNRunner:
         for i in range(1, self.num_epochs + 1):
             np.random.shuffle(train_values)
 
+            train_auc_vector = []
+
             for batch in self.split_to_batches(train_values, self.batch_size):
-                train_stream_acc = self.apply_batch(batch, i, j)
+                train_stream_acc, train_auc = self.apply_batch(batch, i, j)
+                train_auc_vector.append(train_auc)
                 j += 1
+
+            train_auc = np.mean(train_auc_vector)
 
             if i % self.checkpoint_every == 0:
                 self.save_model(i)
@@ -330,7 +337,7 @@ class FCNRunner:
             #         break
             #     else:
             #         avg_validation_acc = []
-        return Validation_Acc, train_stream_acc
+        return Validation_Acc, train_stream_acc, train_auc, loss
 
     def apply_batch(self, batch, i, j):
 
@@ -344,9 +351,9 @@ class FCNRunner:
         if self.network.reg_ground_truth_slicer:
             reg_label_batch = batch[:, self.network.reg_ground_truth_slicer]
 
-        train_streaming_accu = self.train_once_dataframe(i, j, input_batch, label_batch, reg_label_batch)
+        train_streaming_accu, train_auc = self.train_once_dataframe(i, j, input_batch, label_batch, reg_label_batch)
         self.last_train_iteration = j
-        return train_streaming_accu
+        return train_streaming_accu, train_auc
 
     def run_test(self, test_df):
         print("TESTING")
