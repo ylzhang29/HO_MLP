@@ -6,6 +6,7 @@ import tensorflow as tf
 
 import utils
 from mlp.fcn import FCN
+from stratify import StratifiedShuffle
 
 
 class FCNRunner:
@@ -238,6 +239,8 @@ class FCNRunner:
         utils.background_process(["tensorboard", "--logdir=%s" % (log_dir_abs_path)])
 
     def split_to_batches(self, input, batch_size):
+        np.random.shuffle(input)
+
         length = input.shape[0]
         remainder = length % batch_size
         number_of_batches = length // batch_size
@@ -247,6 +250,18 @@ class FCNRunner:
         if remainder != 0:
             batches += [input[-remainder:]]
         return batches
+
+    def create_stratifier(self, input, batch_size):
+        label_batch = None
+
+        if self.network.ground_truth_slicer:
+            label_batch = input[:, self.network.ground_truth_slicer]
+
+        return StratifiedShuffle(input, label_batch, batch_size)
+
+    def split_to_batches_stratified(self, input, stratifier):
+        for batch_idx in stratifier.split():
+            yield input[batch_idx]
 
     def save_model(self, iteration):
 
@@ -275,13 +290,18 @@ class FCNRunner:
         label_batch = None
         reg_label_batch = None
 
+        stratifier = self.create_stratifier(train_values, self.batch_size)
+
         j = 1
         for i in range(1, self.num_epochs + 1):
-            np.random.shuffle(train_values)
-
             train_auc_vector = []
 
-            for batch in self.split_to_batches(train_values, self.batch_size):
+            if self.network.stratified:
+                batches = self.split_to_batches_stratified(train_values, stratifier)
+            else:
+                batches = self.split_to_batches(train_values, self.batch_size)
+
+            for batch in batches:
                 train_stream_acc, train_auc = self.apply_batch(batch, i, j)
                 train_auc_vector.append(train_auc)
                 j += 1

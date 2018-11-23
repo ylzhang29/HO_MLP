@@ -48,6 +48,7 @@ class FCN:
             elif config.get(task, 'type') == 'classification':
                 self.ground_truth_slicer = config.get_as_slice(self.total_column_size, task, "ground_truth_column")
                 self.multilabel = config.get(task, 'multilabel') == 'True'
+                self.stratified = config.get(task, 'stratified') == 'True'
 
     def variable_summaries(self, var, name, task_tag):
         """Attach a lot of summaries to a Tensor."""
