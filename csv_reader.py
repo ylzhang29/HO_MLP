@@ -8,7 +8,7 @@ import pandas as pd
 
 
 def read_csv_dataframe(filename):
-    return pd.read_csv(filename)
+    return pd.read_csv(filename, header=None)
 
 
 def read_csv(filename, batch_size, stratify_task="", config=None):
